@@ -1,11 +1,11 @@
-"""Restore Keshav Jangid's original portfolio (Aug 27, 2026 Netlify Drop deploy)
-and add a "Download Resume" button in the hero and in the contact/footer area.
+"""Restore Keshav Jangid's original portfolio (Aug 27, 2026 Netlify Drop deploy),
+remove the co-founding / interior-design venture content, and add a
+"Download Resume" button in the hero and in the contact/footer area.
 
 The original site is a single self-contained index.html. It is fetched from the
-preserved Aug 27 deploy permalink, the two resume buttons are inserted, the
-co-founding / interior-design venture content is removed, and the result is
-written as index.html for Netlify to publish. The resume PDF
-(Keshav-Jangid-Resume.pdf) lives in this repo and is published alongside it.
+preserved Aug 27 deploy permalink, edited as below, and written as index.html
+for Netlify to publish. The resume PDF (Keshav-Jangid-Resume.pdf) lives in this
+repo and is published alongside it.
 
 The buttons reuse the exact styling of the original hero button: the
 "Get in touch" button markup is cloned, only its link target and label change.
@@ -21,24 +21,7 @@ with urllib.request.urlopen(ORIGINAL_URL, timeout=60) as resp:
     html = resp.read().decode("utf-8")
 
 # The original already links every project to the ksv-py GitHub repos, so no
-# link changes are needed; only the resume buttons are added.
-
-# --- DEBUG: print the raw markup around the co-founding mentions and the CSS,
-# so the exact blocks can be identified from the build log. ---
-for needle in ("Co-Founder", "co-running an interior design"):
-    i = html.find(needle)
-    if i != -1:
-        print(f"--- MARKUP AROUND {needle!r} ---")
-        print(html[max(0, i - 1200): i + 2500])
-        print(f"--- END MARKUP AROUND {needle!r} ---")
-    else:
-        print(f"needle not found: {needle!r}")
-style_m = re.search(r"<style[^>]*>(.*?)</style>", html, re.DOTALL)
-if style_m:
-    print("--- STYLE BLOCK ---")
-    print(style_m.group(1))
-    print("--- END STYLE BLOCK ---")
-print("ARTEM present in source:", "artem" in html.lower())
+# link changes are needed.
 
 # --- Remove the co-founding / interior-design venture content. ---
 # (a) About paragraph about co-running the interior design business.
@@ -48,22 +31,26 @@ para_re = re.compile(
     re.DOTALL,
 )
 html, n_para = para_re.subn("", html, count=1)
-print("removed about co-running paragraph:", n_para)
+assert n_para == 1, "about co-running paragraph not found"
 
-# (b) Co-Founder experience entry. Try an <article> container first; the
-# debug markup above shows the real container if this does not match.
-art_re = re.compile(
-    r"<article\b[^>]*>(?:(?!</article>).)*?Co-Founder(?:(?!</article>).)*?</article>",
-    re.DOTALL,
-)
-html, n_art = art_re.subn("", html, count=1)
-print("removed co-founder article:", n_art)
+# (b) Co-Founder experience entry: the <div class="commit"> block holding the
+# "Co-Founder" heading. Remove that whole block (up to the next entry).
+h3 = html.find("<h3>Co-Founder</h3>")
+assert h3 != -1, "Co-Founder heading not found"
+start = html.rfind('<div class="commit">', 0, h3)
+assert start != -1, "Co-Founder entry container not found"
+next_commit = html.find('<div class="commit">', h3)
+assert next_commit != -1, "next experience entry not found"
+end = html.rfind("</div>", 0, next_commit) + len("</div>")
+removed = html[start:end]
+assert "Co-Founder" in removed, "removed block is not the Co-Founder entry"
+assert "Interior Designing" in removed, "removed block is not the venture entry"
+html = html[:start] + html[end:]
 
-# Safety net: nothing about the venture may survive in the page.
+# Safety net: no trace of the venture may survive in the page.
 for bad in ("Co-Founder", "Co-founded", "co-running", "Interior Designing",
-            "interior design", "Construction Venture", "Artem", "artem"):
-    if bad in html:
-        print(f"WARNING: still present after removal: {bad!r}")
+            "interior design", "Construction Venture", "Artem"):
+    assert bad not in html, f"venture content still present: {bad!r}"
 
 # --- Resume buttons (clone the hero "Get in touch" button). ---
 m = re.search(r"<a\b[^>]*>Get in touch</a>", html)
@@ -101,7 +88,26 @@ html = html[:at] + " " + resume_button + html[at:]
 assert html.count("Download Resume") == 2, "expected exactly 2 resume buttons"
 assert html.count(PDF) == 2, "expected exactly 2 resume PDF links"
 
+# --- Small-screen fixes (keeps the original design). ---
+# The original hides the nav links below 640px with no fallback, so the nav is
+# unusable on phones. Show the links wrapped under the brand instead. Also
+# guard the footer links and status-card values against overflow on narrow
+# screens. This is an extra <style> block; the original CSS is untouched.
+responsive_css = (
+    "<style>\n"
+    "@media (max-width:640px){\n"
+    "  nav .wrap{flex-wrap:wrap; row-gap:2px; padding-top:12px; padding-bottom:12px;}\n"
+    "  nav ul{display:flex; flex-wrap:wrap; gap:6px 18px; font-size:13px;}\n"
+    "  .footer-links a{overflow-wrap:anywhere;}\n"
+    "  .status-card .row{gap:12px;}\n"
+    "  .status-card .v{overflow-wrap:break-word; min-width:0;}\n"
+    "}\n"
+    "</style>\n"
+)
+assert "</head>" in html, "no </head> found"
+html = html.replace("</head>", responsive_css + "</head>", 1)
+
 with open("index.html", "w", encoding="utf-8") as f:
     f.write(html)
 
-print("OK: wrote index.html (original design) with Download Resume buttons in hero and footer")
+print("OK: wrote index.html (original design, venture content removed) with Download Resume buttons in hero and footer")

@@ -1,0 +1,11 @@
+# Keshav Jangid — Portfolio v2
+# Static site: no build step. Netlify serves index.html, styles.css and script.js as-is.
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"

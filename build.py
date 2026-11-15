@@ -9,6 +9,7 @@ repo and is published alongside it.
 
 The buttons reuse the exact styling of the original hero button: the
 "Get in touch" button markup is cloned, only its link target and label change.
+The buttons link to /Keshav-Jangid-Resume.pdf (site root).
 """
 
 import re
@@ -59,7 +60,7 @@ if not m:
 hero_anchor = m.group(0)
 open_tag = hero_anchor[: hero_anchor.index(">") + 1]
 open_tag = re.sub(
-    r"href=([\"'])[^\"']*\1", 'href="Keshav-Jangid-Resume.pdf"', open_tag, count=1
+    r"href=([\"'])[^\"']*\1", 'href="/Keshav-Jangid-Resume.pdf"', open_tag, count=1
 )
 open_tag = open_tag.replace("<a", "<a download", 1)
 resume_button = open_tag + "Download Resume</a>"
@@ -106,6 +107,12 @@ responsive_css = (
 )
 assert "</head>" in html, "no </head> found"
 html = html.replace("</head>", responsive_css + "</head>", 1)
+
+# Print the final file to the build log so its exact contents can be placed
+# in the repo as a plain static file.
+print("===FINAL INDEX.HTML START===")
+print(html)
+print("===FINAL INDEX.HTML END===")
 
 with open("index.html", "w", encoding="utf-8") as f:
     f.write(html)

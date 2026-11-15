@@ -1,6 +1,8 @@
-# Keshav Jangid — Portfolio v2
-# Static site: no build step. Netlify serves index.html, styles.css and script.js as-is.
+# Keshav Jangid — Portfolio
+# Build step: restore the original single-file site (Aug 27 deploy) and add
+# the resume download buttons, then serve the generated index.html.
 [build]
+  command = "python3 build.py"
   publish = "."
 
 [[headers]]
